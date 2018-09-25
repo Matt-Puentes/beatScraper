@@ -1,6 +1,8 @@
 import requests
 import sys
 import re
+import zipfile
+import os
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -32,10 +34,21 @@ def extract_song_info(table):
 
 def main():
 	if len(sys.argv) != 2:
-		print("Usage: python3 main.py [nameOfSong]")
+		print("Usage: python3 main.py [nameOfSong]" )
 		quit(1)
 
 	songName = sys.argv[1]
+	
+	extractDir = ""
+	if not os.path.isfile('configFile.txt'):
+		print("You need a \'configFile.txt\' in the same directory as this script.\nInside please put your beatsaber custom songs directory.")
+	else:
+		with open('configFile.txt', 'r') as configFile:
+			extractDir = configFile.readline()
+			extractDir = extractDir.strip()
+				
+	print(extractDir)
+
 	with requests.session() as client:
 		url = 'https://beatsaver.com/search/all/' + songName
 		r = client.get(url)
@@ -48,16 +61,21 @@ def main():
 				songList.append(extract_song_info(table))
 		print(songList)
 
+		
 		for song in songList:
-			url = song['download']
-			response = requests.get(url, stream=True)
-
-			with open((song['song']+".zip"), "wb") as handle:
-    				for data in tqdm(response.iter_content()):
-        				handle.write(data)
-
-
-
+			response = input("Do you want to download the song " + song['song'] + "? [y|N]")
+			if(response == "y"):
+				url = song['download']
+				response = requests.get(url, stream=True)
+				with open((song['song']+".zip"), "wb") as handle:
+					for data in tqdm(response.iter_content()):
+						handle.write(data)
+				print("unzipping")
+				zip_ref = zipfile.ZipFile(song['song']+".zip", 'r')
+				zip_ref.extractall(extractDir)
+				zip_ref.close()
+				
+				os.remove(song['song'] + ".zip")
 
 if __name__== "__main__":
 	main();
